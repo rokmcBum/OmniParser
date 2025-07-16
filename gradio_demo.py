@@ -1,20 +1,15 @@
+import base64
+import gradio as gr
+import io
+import torch
+from PIL import Image
 from typing import Optional
 
-import gradio as gr
-import numpy as np
-import torch
-from PIL import Image
-import io
-
-
-import base64, os
 from util.utils import check_ocr_box, get_yolo_model, get_caption_model_processor, get_som_labeled_img
-import torch
-from PIL import Image
 
 yolo_model = get_yolo_model(model_path='weights/icon_detect/model.pt')
-caption_model_processor = get_caption_model_processor(model_name="florence2", model_name_or_path="weights/icon_caption_florence")
-# caption_model_processor = get_caption_model_processor(model_name="blip2", model_name_or_path="weights/icon_caption_blip2")
+# caption_model_processor = get_caption_model_processor(model_name="florence2", model_name_or_path="weights/icon_caption_florence")
+caption_model_processor = get_caption_model_processor(model_name="blip2",model_name_or_path="Salesforce/blip2-opt-2.7b")
 
 MARKDOWN = """
 # OmniParser for Pure Vision Based General GUI Agent 🔥
@@ -33,13 +28,12 @@ DEVICE = torch.device('cuda')
 # @torch.inference_mode()
 # @torch.autocast(device_type="cuda", dtype=torch.bfloat16)
 def process(
-    image_input,
-    box_threshold,
-    iou_threshold,
-    use_paddleocr,
-    imgsz
+        image_input,
+        box_threshold,
+        iou_threshold,
+        use_paddleocr,
+        imgsz
 ) -> Optional[Image.Image]:
-
     box_overlay_ratio = image_input.size[0] / 3200
     draw_bbox_config = {
         'text_scale': 0.8 * box_overlay_ratio,
@@ -49,14 +43,26 @@ def process(
     }
     # import pdb; pdb.set_trace()
 
-    ocr_bbox_rslt, is_goal_filtered = check_ocr_box(image_input, display_img = False, output_bb_format='xyxy', goal_filtering=None, easyocr_args={'paragraph': False, 'text_threshold':0.9}, use_paddleocr=use_paddleocr)
+    ocr_bbox_rslt, is_goal_filtered = check_ocr_box(image_input, display_img=False, output_bb_format='xyxy',
+                                                    goal_filtering=None,
+                                                    easyocr_args={'paragraph': False, 'text_threshold': 0.9},
+                                                    use_paddleocr=use_paddleocr)
     text, ocr_bbox = ocr_bbox_rslt
-    dino_labled_img, label_coordinates, parsed_content_list = get_som_labeled_img(image_input, yolo_model, BOX_TRESHOLD = box_threshold, output_coord_in_ratio=True, ocr_bbox=ocr_bbox,draw_bbox_config=draw_bbox_config, caption_model_processor=caption_model_processor, ocr_text=text,iou_threshold=iou_threshold, imgsz=imgsz,)  
+    dino_labled_img, label_coordinates, parsed_content_list = get_som_labeled_img(image_input, yolo_model,
+                                                                                  BOX_TRESHOLD=box_threshold,
+                                                                                  output_coord_in_ratio=True,
+                                                                                  ocr_bbox=ocr_bbox,
+                                                                                  draw_bbox_config=draw_bbox_config,
+                                                                                  caption_model_processor=caption_model_processor,
+                                                                                  ocr_text=text,
+                                                                                  iou_threshold=iou_threshold,
+                                                                                  imgsz=imgsz, )
     image = Image.open(io.BytesIO(base64.b64decode(dino_labled_img)))
     print('finish processing')
-    parsed_content_list = '\n'.join([f'icon {i}: ' + str(v) for i,v in enumerate(parsed_content_list)])
+    parsed_content_list = '\n'.join([f'icon {i}: ' + str(v) for i, v in enumerate(parsed_content_list)])
     # parsed_content_list = str(parsed_content_list)
     return image, str(parsed_content_list)
+
 
 with gr.Blocks() as demo:
     gr.Markdown(MARKDOWN)
@@ -78,7 +84,7 @@ with gr.Blocks() as demo:
                 value='Submit', variant='primary')
         with gr.Column():
             image_output_component = gr.Image(type='pil', label='Image Output')
-            text_output_component = gr.Textbox(label='Parsed screen elements', placeholder='Text Output')
+            text_output_component = gr.Textbox(label='Parsed screen elements')
 
     submit_button_component.click(
         fn=process,
