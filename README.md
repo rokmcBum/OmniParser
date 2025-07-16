@@ -1,3 +1,9 @@
+---
+title: OmniParser
+app_file: gradio_demo.py
+sdk: gradio
+sdk_version: 5.13.2
+---
 # OmniParser: Screen Parsing tool for Pure Vision Based GUI Agent
 
 <p align="center">
