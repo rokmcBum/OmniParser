@@ -53,7 +53,6 @@ def process(
                                                                                   output_coord_in_ratio=True,
                                                                                   ocr_bbox=ocr_bbox,
                                                                                   draw_bbox_config=draw_bbox_config,
-                                                                                  caption_model_processor=caption_model_processor,
                                                                                   ocr_text=text,
                                                                                   iou_threshold=iou_threshold,
                                                                                   imgsz=imgsz, )
