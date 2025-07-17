@@ -18,15 +18,12 @@ paddle_ocr = PaddleOCR(
     use_dilation=True,  # improves accuracy
     det_db_score_mode='slow',  # improves accuracy
     rec_batch_num=1024)
-import time
 import base64
 
 import torch
-from typing import Tuple, List, Union
+from typing import List, Union
 from torchvision.ops import box_convert
-from torchvision.transforms import ToPILImage
 import supervision as sv
-import torchvision.transforms as T
 from util.box_annotator import BoxAnnotator
 
 
@@ -61,7 +58,6 @@ def get_yolo_model(model_path):
     # Load the model.
     model = YOLO(model_path)
     return model
-
 
 
 def remove_overlap_new(boxes, iou_threshold, ocr_bbox=None):
@@ -148,20 +144,6 @@ def remove_overlap_new(boxes, iou_threshold, ocr_bbox=None):
             else:
                 filtered_boxes.append(box1)
     return filtered_boxes  # torch.tensor(filtered_boxes)
-
-
-def load_image(image_path: str) -> Tuple[np.array, torch.Tensor]:
-    transform = T.Compose(
-        [
-            T.RandomResize([800], max_size=1333),
-            T.ToTensor(),
-            T.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-        ]
-    )
-    image_source = Image.open(image_path).convert("RGB")
-    image = np.asarray(image_source)
-    image_transformed, _ = transform(image_source, None)
-    return image, image_transformed
 
 
 def annotate(image_source: np.ndarray, boxes: torch.Tensor, logits: torch.Tensor, phrases: List[str], text_scale: float,
@@ -252,12 +234,6 @@ def get_som_labeled_img(image_source: Union[str, Image.Image], model=None, BOX_T
                         output_coord_in_ratio=False, ocr_bbox=None, text_scale=0.4, text_padding=5,
                         draw_bbox_config=None, ocr_text=[],
                         iou_threshold=0.9, scale_img=False, imgsz=None):
-    """Process either an image path or Image object
-    
-    Args:
-        image_source: Either a file path (str) or PIL Image object
-        ...
-    """
     if isinstance(image_source, str):
         image_source = Image.open(image_source)
     image_source = image_source.convert("RGB")  # for CLIP
@@ -321,12 +297,6 @@ def get_xyxy(input):
     x, y, xp, yp = input[0][0], input[0][1], input[2][0], input[2][1]
     x, y, xp, yp = int(x), int(y), int(xp), int(yp)
     return x, y, xp, yp
-
-
-def get_xywh_yolo(input):
-    x, y, w, h = input[0], input[1], input[2] - input[0], input[3] - input[1]
-    x, y, w, h = int(x), int(y), int(w), int(h)
-    return x, y, w, h
 
 
 def check_ocr_box(image_source: Union[str, Image.Image], display_img=True, output_bb_format='xywh', goal_filtering=None,
