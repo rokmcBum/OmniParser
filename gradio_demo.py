@@ -9,7 +9,8 @@ from util.utils import check_ocr_box, get_yolo_model, get_caption_model_processo
 
 yolo_model = get_yolo_model(model_path='weights/icon_detect/model.pt')
 # caption_model_processor = get_caption_model_processor(model_name="florence2", model_name_or_path="weights/icon_caption_florence")
-caption_model_processor = get_caption_model_processor(model_name="blip2",model_name_or_path="Salesforce/blip2-opt-2.7b")
+caption_model_processor = get_caption_model_processor(model_name="blip2",
+                                                      model_name_or_path="Salesforce/blip2-opt-2.7b")
 
 MARKDOWN = """
 # OmniParser for Pure Vision Based General GUI Agent 🔥
@@ -23,6 +24,7 @@ OmniParser is a screen parsing tool to convert general GUI screen to structured 
 """
 
 DEVICE = torch.device('cuda')
+
 
 # @spaces.GPU
 # @torch.inference_mode()
@@ -71,14 +73,14 @@ with gr.Blocks() as demo:
                 type='pil', label='Upload image')
             # set the threshold for removing the bounding boxes with low confidence, default is 0.05
             box_threshold_component = gr.Slider(
-                label='Box Threshold', minimum=0.01, maximum=1.0, step=0.01, value=0.05)
+                label='Box Threshold', minimum=0.01, maximum=1.0, step=0.01, value=0.1)
             # set the threshold for removing the bounding boxes with large overlap, default is 0.1
             iou_threshold_component = gr.Slider(
-                label='IOU Threshold', minimum=0.01, maximum=1.0, step=0.01, value=0.1)
+                label='IOU Threshold', minimum=0.01, maximum=1.0, step=0.01, value=0.4)
             use_paddleocr_component = gr.Checkbox(
                 label='Use PaddleOCR', value=True)
             imgsz_component = gr.Slider(
-                label='Icon Detect Image Size', minimum=640, maximum=1920, step=32, value=640)
+                label='Icon Detect Image Size', minimum=640, maximum=1920, step=32, value=1024)
             submit_button_component = gr.Button(
                 value='Submit', variant='primary')
         with gr.Column():
