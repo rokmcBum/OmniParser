@@ -2,6 +2,7 @@
 import cv2
 import io
 import numpy as np
+import time
 from PIL import Image
 from craft_text_detector import Craft
 # %matplotlib inline
@@ -332,11 +333,11 @@ def check_ocr_box(image_source: Union[str, Image.Image], display_img=True, outpu
             img_bgr = cv2.cvtColor(np.array(image_source), cv2.COLOR_RGB2BGR)
         else:
             raise ValueError("Unsupported image type")
-        # craft_start_time = time.time()
-        # result = craft.detect_text(img_bgr)
-        # craft_end_time = time.time()
+        craft_start_time = time.time()
+        result = craft.detect_text(img_bgr)
+        craft_end_time = time.time()
 
-        # print("craft 소요 시간 : ", craft_end_time - craft_start_time)
+        print("craft 소요 시간 : ", craft_end_time - craft_start_time)
 
         boxes = result["boxes"]  # 예상: List[np.ndarray of shape (4, 2)]
 
