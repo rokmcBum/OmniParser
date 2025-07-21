@@ -1,14 +1,20 @@
 # from ultralytics import YOLO
 import cv2
-import easyocr
 import io
 import numpy as np
 from PIL import Image
+from craft_text_detector import Craft
 # %matplotlib inline
 from matplotlib import pyplot as plt
 from paddleocr import PaddleOCR
+from transformers import TrOCRProcessor, VisionEncoderDecoderModel
 
-reader = easyocr.Reader(['ko'])
+processor = TrOCRProcessor.from_pretrained("team-lucid/trocr-small-korean")
+model = VisionEncoderDecoderModel.from_pretrained("team-lucid/trocr-small-korean")
+
+# CRAFT 탐지기
+craft = Craft(output_dir=None, crop_type="box", cuda=False)
+
 paddle_ocr = PaddleOCR(
     lang='korean',  # other lang also available
     use_angle_cls=False,
@@ -35,7 +41,7 @@ def get_caption_model_processor(model_name, model_name_or_path="Salesforce/blip2
         processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
         if device == 'cpu':
             model = Blip2ForConditionalGeneration.from_pretrained(
-                model_name_or_path, device_map=None, torch_dtype=torch.float32
+                model_name_or_path, device_map=None, torch_dtype=torch.float16
             )
         else:
             model = Blip2ForConditionalGeneration.from_pretrained(
@@ -299,7 +305,7 @@ def get_xyxy(input):
     return x, y, xp, yp
 
 
-def check_ocr_box(image_source: Union[str, Image.Image], display_img=True, output_bb_format='xywh', goal_filtering=None,
+def check_ocr_box(image_source: Union[str, Image.Image], display_img=True, output_bb_format='xywh',
                   easyocr_args=None, use_paddleocr=False):
     if isinstance(image_source, str):
         image_source = Image.open(image_source)
@@ -316,12 +322,54 @@ def check_ocr_box(image_source: Union[str, Image.Image], display_img=True, outpu
         result = paddle_ocr.ocr(image_np, cls=False)[0]
         coord = [item[0] for item in result if item[1][1] > text_threshold]
         text = [item[1][0] for item in result if item[1][1] > text_threshold]
-    else:  # EasyOCR
-        if easyocr_args is None:
-            easyocr_args = {}
-        result = reader.readtext(image_np, **easyocr_args)
-        coord = [item[0] for item in result]
-        text = [item[1] for item in result]
+    else:  # CRAFT + TrOCR
+        if isinstance(image_source, np.ndarray):
+            # OpenCV BGR 형식이면 그대로 사용 가능
+            img_bgr = image_source
+        elif isinstance(image_source, Image.Image):
+            # PIL Image면 OpenCV BGR로 변환
+            image_source = np.array(image_source)
+            img_bgr = cv2.cvtColor(np.array(image_source), cv2.COLOR_RGB2BGR)
+        else:
+            raise ValueError("Unsupported image type")
+        # craft_start_time = time.time()
+        # result = craft.detect_text(img_bgr)
+        # craft_end_time = time.time()
+
+        # print("craft 소요 시간 : ", craft_end_time - craft_start_time)
+
+        boxes = result["boxes"]  # 예상: List[np.ndarray of shape (4, 2)]
+
+        valid_boxes = []
+        for box in boxes:
+            try:
+                box = np.array(box)
+                if box.shape == (4, 2) and not np.any(np.isnan(box)):
+                    valid_boxes.append(box)
+            except Exception as e:
+                continue
+
+        if not valid_boxes:
+            return ([], [])
+
+        coord, text = [], []
+        image_source = cv2.cvtColor(image_source, cv2.COLOR_BGR2RGB)
+        pil_bgr = Image.fromarray(image_source)
+        for box in valid_boxes:
+            x1, y1 = map(int, box[0])
+            x2, y2 = map(int, box[2])
+            crop = pil_bgr.crop((x1, y1, x2, y2))
+
+            try:
+                inputs = processor(crop, return_tensors="pt").pixel_values
+                with torch.no_grad():
+                    generated_ids = model.generate(inputs.to(model.device))
+                txt = processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+            except Exception as e:
+                txt = ""
+            coord.append(box.tolist())
+            text.append(txt)
+
     if display_img:
         opencv_img = cv2.cvtColor(image_np, cv2.COLOR_RGB2BGR)
         bb = []
@@ -336,4 +384,4 @@ def check_ocr_box(image_source: Union[str, Image.Image], display_img=True, outpu
             bb = [get_xywh(item) for item in coord]
         elif output_bb_format == 'xyxy':
             bb = [get_xyxy(item) for item in coord]
-    return (text, bb), goal_filtering
+    return (text, bb)
