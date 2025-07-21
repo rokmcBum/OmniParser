@@ -1,11 +1,14 @@
 import base64
 import gradio as gr
 import io
+import multiprocessing
 import torch
 from PIL import Image
 from typing import Optional
 
 from util.utils import check_ocr_box, get_yolo_model, get_caption_model_processor, get_som_labeled_img
+
+multiprocessing.set_start_method('spawn')
 
 yolo_model = get_yolo_model(model_path='weights/icon_detect/model.pt')
 # caption_model_processor = get_caption_model_processor(model_name="florence2", model_name_or_path="weights/icon_caption_florence")
@@ -45,10 +48,8 @@ def process(
     }
     # import pdb; pdb.set_trace()
 
-    ocr_bbox_rslt, is_goal_filtered = check_ocr_box(image_input, display_img=False, output_bb_format='xyxy',
-                                                    goal_filtering=None,
-                                                    easyocr_args={'paragraph': False, 'text_threshold': 0.9},
-                                                    use_paddleocr=use_paddleocr)
+    ocr_bbox_rslt = check_ocr_box(image_input, display_img=False, output_bb_format='xyxy',
+                                  use_paddleocr=use_paddleocr)
     text, ocr_bbox = ocr_bbox_rslt
     dino_labled_img, label_coordinates, parsed_content_list = get_som_labeled_img(image_input, yolo_model,
                                                                                   BOX_TRESHOLD=box_threshold,
@@ -78,9 +79,9 @@ with gr.Blocks() as demo:
             iou_threshold_component = gr.Slider(
                 label='IOU Threshold', minimum=0.01, maximum=1.0, step=0.01, value=0.4)
             use_paddleocr_component = gr.Checkbox(
-                label='Use PaddleOCR', value=True)
+                label='Use PaddleOCR', value=False)
             imgsz_component = gr.Slider(
-                label='Icon Detect Image Size', minimum=640, maximum=1920, step=32, value=1024)
+                label='Icon Detect Image Size', minimum=640, maximum=6400, step=32, value=1024)
             submit_button_component = gr.Button(
                 value='Submit', variant='primary')
         with gr.Column():
