@@ -149,7 +149,7 @@ def remove_overlap_new(boxes, iou_threshold, ocr_bbox=None):
                             {'type': 'icon', 'bbox': box1_elem['bbox'], 'interactivity': True, 'content': None,
                              'source': 'box_yolo_content_yolo'})
             else:
-                filtered_boxes.append(box1)
+                filtered_boxes.append(box1_elem)
     return filtered_boxes  # torch.tensor(filtered_boxes)
 
 
@@ -238,7 +238,7 @@ def int_box_area(box, w, h):
 
 
 def get_som_labeled_img(image_source: Union[str, Image.Image], model=None, BOX_TRESHOLD=0.01,
-                        output_coord_in_ratio=False, ocr_bbox=None, text_scale=0.4, text_padding=5,
+                        output_coord_in_ratio=False, ocr_bbox=[], text_scale=0.4, text_padding=5,
                         draw_bbox_config=None, ocr_text=[],
                         iou_threshold=0.9, scale_img=False, imgsz=None):
     if isinstance(image_source, str):
@@ -259,7 +259,7 @@ def get_som_labeled_img(image_source: Union[str, Image.Image], model=None, BOX_T
         ocr_bbox = ocr_bbox.tolist()
     else:
         print('no ocr bbox!!!')
-        ocr_bbox = None
+        ocr_bbox = []
 
     ocr_bbox_elem = [
         {'type': 'text', 'bbox': box, 'interactivity': False, 'content': txt, 'source': 'box_ocr_content_ocr'} for
